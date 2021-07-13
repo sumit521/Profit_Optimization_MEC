@@ -13,10 +13,10 @@ clear all; close all;
 tic % measuring start time
 Fontsize = 12;
 global u genetic_fast e omega ohm gamma_C gamma_T Dm Fm B F N M Ln fm_local Tm_max Wm
-iter  = 10;
-start = 2;
-delta = 10;
-for u = 1:10
+iter  = 10; % ending UE count 10+iter*delta
+start = 2; % starting UE count 10+start*delta 
+delta = 10; % step size for incrementing number of UEs 
+for u = 1:10 % number of iterations to average the result
 %%
 for q = start:iter
 %%
@@ -29,9 +29,7 @@ p = 10*rand(M,N); % transmit power from RRH n to MT m ; for each RRH Tx power is
 g = 50*rand(M,N); % channel gain from RRH n to MT m
 sigma_square = 5; %AWGN  noise with zero mean -174dBm/Hz
 Ln = 5e7; % fronthaul capacity for each RRH is 50Mbps
-% path loss model 37.6*log(dist) +148.1
-%shadowing factor = log normal function with standard deviation of 8dB and
-%small scale fading with zero mean and unit variance
+
 F = 100e9; %MEC server maximum computational capacity 1000 GHz
 fm_local = 0.7e9;   % local computational capacity 0.7GHz
 Dm = unifrnd(50,200,M,1)*1024*8; % output data size
@@ -199,7 +197,7 @@ idx_temp = idx(1:test_count); % list of test MTs of test count
 
 cm_total = sum(cm_sorted)+cm_total; % add the computational resource allocation factor *c of optimzation problem solved above to the total  
 
-fprintf('sum(cm_sorted)= %f \n',cm_sorted); %for testing purpose
+fprintf('sum(cm_sorted)= %f \n',sum(cm_sorted)); %for testing purpose
 
 if(cm_total<=1)  % if the there are still resources to be allocated, i.e.  there is no overshoot of computational resources then
     S1 = [S1,idx_temp]; % add the MTs of test count (K/2) to the existing set of permitted MTs S1
