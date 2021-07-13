@@ -178,7 +178,7 @@ e_m=repmat(e_m',1,N); % repeat the columns of e_m to create the matrix mentioned
 
 cm_total =0; % total fraction of MEC server computational resource allocated
 while(K~=0)
-fprintf('K = %d',K); % display value of K
+fprintf('K = %d \n',K); % display value of K
 [~,idx_S3] =sort(e_m(S3,1),'Descend'); % sort the MTs in terms of spectrum effiency (SE) 
 % sort the other papameter also so that they are in same order as MTs
 idx = S3(idx_S3); % the  MTs in S3 sorted on the basis of their SE
@@ -199,7 +199,7 @@ idx_temp = idx(1:test_count); % list of test MTs of test count
 
 cm_total = sum(cm_sorted)+cm_total; % add the computational resource allocation factor *c of optimzation problem solved above to the total  
 
-fprintf('sum(cm_sorted)= %f',cm_sorted); %for testing purpose
+fprintf('sum(cm_sorted)= %f \n',cm_sorted); %for testing purpose
 
 if(cm_total<=1)  % if the there are still resources to be allocated, i.e.  there is no overshoot of computational resources then
     S1 = [S1,idx_temp]; % add the MTs of test count (K/2) to the existing set of permitted MTs S1
@@ -235,7 +235,7 @@ end
 disp('selcted UEs')
 disp('S1')
 disp(S1)
-frintf('cm_total = %f',cm_total)
+fprintf('cm_total = %f \n',cm_total)
 
     a =x; % recreate the inital offloading matrix 
     feasible = 0; % marker for checking the feasibility of set S1 
