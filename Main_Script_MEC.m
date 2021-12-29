@@ -8,42 +8,90 @@
 % strategy in mobile edge computing scenario. These three algorithms are
 % 1. Normal Genetic 2. Fast Genetic 3. SJOORA scheme.
 % For system model, simulation paramters and SJOORA algorithm, refer to https://ieeexplore.ieee.org/document/8736324
-%
 % The program execution can take upto 45 min for u=3 (3 iterations) on i7-1170 processor,
 % RAM 16GB. More time for higher u. Don't set u=1:1. As the mean() function
 % will avarage the single row. Keep u>1, for averaging along columns.
 % Have patience!
 % Copyright 2021, Sumit Singh, All rights reserved
 %%
-clear all; close all;
+clear ; close all;
+
 tic % measuring start time
 Fontsize = 12;
-global u genetic_fast e omega ohm gamma_C gamma_T Dm Fm B F N M Ln fm_local Tm_max Wm Sm kappa omega pf pt qb qc
+global u genetic_fast e omega ohm gamma_C gamma_T Dm Fm B F N M Ln fm_local Tm_max Wm Sm kappa omega pf pt qb qc 
 iter  = 10; % ending UE count 10+iter*delta
-start = 2; % starting UE count 10+start*delta 
+start = 2;  % starting UE count 10+start*delta 
 delta = 10; % step size for incrementing number of UEs 
-for u = 1:3 % number of iterations to average the result
-%%
-for q = start:iter
-%%
-N = 10; %number of RRHs
-M = 10+delta*q; % number of UEs
-W = zeros(M,3); %task matrix, each row cooresponds to one user's (Fm,Dm and Tm,max)
-B = 1e7;    % channel bandwidth 100MHz
-%b = rand(M,N); % percentage of radio spectrum allocated to MT m by RRH n
-p = 10*rand(M,N); % transmit power from RRH n to MT m ; for each RRH Tx power is 30dBm
-g = 50*rand(M,N); % channel gain from RRH n to MT m
-sigma_square = 5; %AWGN  noise with zero mean -174dBm/Hz
-Ln = 5e7; % fronthaul capacity for each RRH is 50Mbps
 
+
+%% creating random distribution of RRHs 
+N = 10; %number of RRHs
+cov_rad = 500;
+% path loss model 37.6*log(dist) + 148.1
+sigma_shadow = 8; %small scale fading model is independently and identically distributed (i.i.d.) Rayleigh fading with zero mean and unit variance
+noise_power = -174;
+xx0=0; yy0=0; %centre of disk
+areaTotal = pi*cov_rad^2; %area of disk
+
+% theta = 2*pi*(rand(N,1));
+% rho = cov_rad*sqrt(rand(N,1));
+theta = [asin(1/3)*ones(3,1);zeros(4,1);asin(-1/3)*ones(3,1)];
+rho = cov_rad;
+% [xxRRH, yyRRH] = pol2cart(theta,rho);
+% xxRRH = xxRRH + xx0;
+% yyRRH = yyRRH + yy0;
+xxRRH = [-cov_rad/2,0,cov_rad/2,-3*cov_rad/4,-cov_rad/4,cov_rad/4,3*cov_rad/4,-cov_rad/2,0,cov_rad/2]' + xx0;
+yyRRH = [1*cov_rad/2*ones(3,1);zeros(4,1);-1*cov_rad/2*ones(3,1)] + yy0;
+
+for u = 1:10 % number of iterations to average the result
+
+
+for q = start:iter
+
+
+M = 10+delta*q; % number of UEs
+%% creating random distribution of UEs
+thetaUE = 2*pi*(rand(M,1));
+rhoUE = cov_rad*sqrt(rand(M,1));
+
+[xxUE, yyUE] = pol2cart(thetaUE,rhoUE);
+xxUE = xxUE + xx0;
+yyUE = yyUE + yy0;
+
+distance_matrix = pdist2([xxUE, yyUE],[xxRRH, yyRRH])/1000; % for distance in km
+pathloss = 148.1+37.6*log10(distance_matrix) + 8*randn(1) - 10;
+pt = 10.^30*ones(1,N); %30dbm
+variance = 10.^(-pathloss/10); %gt
+noise_variance = 10^-174;
+interference = zeros(M,N);
+for m = 1:M
+    for n =1:N
+        for j = 1:N
+            if j~=n
+                interference(m,n) = interference(m,n)+ pt(n)*variance(m,j);
+            end
+        end
+    end
+end
+           
+for m = 1:M
+    for n =1:N
+        e(m,n) = log2(1 + pt(n)*variance(m,n)/(noise_variance + interference(m,n)) );
+    end
+end
+
+%% defining constants
+W = zeros(M,3); %task matrix, each row cooresponds to one user's (Fm,Dm and Tm,max)
+B = 1e7;    % channel bandwidth 10MHz
+Ln = 5e7; % fronthaul capacity for each RRH is 50Mbps
 F = 100e9; %MEC server maximum computational capacity 100 GHz
 fm_local = 0.7e9;   % local computational capacity 0.7GHz
 Dm = unifrnd(50,200,M,1)*1024*8; % output data size
 Tm_max = unifrnd(0.6,1.5,M,1)*600e-3; % latency constraint of 600ms
 Fm = 1000*Dm; % amountof computation for task Fm
 Sm = 0.1; % storage cost 0.1$
-kappa = .5;   % impact factor of abndwidth cost
-omega = 10;   % impact factor of computation cost
+kappa = .5;   % impact factor of computation cost
+omega = 10;   % impact factor of bandwidth cost
 pf = 0.03e-6; % unit price of charge for computation 0.03$/Mega Cycle
 pt = 0.3/(1024*1024); %unit price of charge for transmission 0.3$
 qb = 0.5e-6;   %unit price of charge for bandwidth 0.5$/Mhz
@@ -54,29 +102,35 @@ gamma_C = kappa*F*qc*ones(M,1); % computationa cost vector
 ohm = (pf*Fm +pt.*Dm+Sm); % revenue vector
 
 % creating spectrum efficiency matrix  
-e = 5*rand(M,N).*rand(M,N);% spectrum efficiency between each UE nad RRH is in range 0 to 5.
+% e = 5*rand(M,N).*rand(M,N);% spectrum efficiency between each UE nad RRH is in range 0 to 5.
 
 
 
 %% Calculating the profits 
 
-% genetic_fast = 1 ;
+% genetic_fast = 0 ;
 % [profit_genetic(u,q),~] = genetic_algo();
+
 
 for s = 1:2 
     genetic_fast = s-1; %if genetic_fast == 1, then fast genetic algo is used otherwise normal genetic
-[profit_genetic(u,q,s),~] = genetic_algo();
+    tic
+    [profit_genetic(u,q,s),~] = genetic_algo();
+    time_genetic(u,q,s)= toc;
 end
-
-[profit_sjoora(u,q),S1] = sjoora(); % calculate profit using sjoora algorithm
-
+tic
+[profit_sjoora(u,q),S1] = sjoora(); % calculate the profit using sjoora algorithm
+time_sjoora(u,q) = toc;
 %%
 end
 end
-toc % measuring end time
+total_time = toc % measuring end time
 
-%% Plotting Results 
+%% Plotting Results  
 x = 10+delta*(start:iter); % X axis of the curves, representing number of UEs 
+
+
+
 
 %% for resource dependency trend
 % markers = {'o','+','*','s','d','v','>','h'};
@@ -97,21 +151,19 @@ x = 10+delta*(start:iter); % X axis of the curves, representing number of UEs
 %     y = profit_genetic(i,:);    
 %     plot(x,y(start:iter),'Marker',getprop(markers,i),...
 %         'color',getprop(colors,i));
-%     text{i} = sprintf('Ln = %d Mbps',(20*i));     
+%     text{i} = sprintf('Ln = %d Mbps',(10*i));     
 % end
-% legend(text{1:2:u})
+% legend(text{1:2:u},'Location','Best')
 % xlabel("Number of UEs",'FontSize',Fontsize)
 % ylabel("Profit (in $)",'FontSize',Fontsize)
-% title("Impact of Fronthaul Link capacity per RRH",'FontSize',Fontsize+1)
 % grid on;
+% exportfig(gcf,'Fronthaul.eps','Color','rgb','LineWidth',2)
+% saveas(gcf,'Fronthaul.png')
 % hold off
 
 
-%% for all three algorithms comparison
 
-
-
-% Comparison of two genetic algos
+%% Comparison of two genetic algos
 % profit_genetic_avg = mean(profit_genetic(:,:,1));
 % profit_fast_avg = mean(profit_genetic(:,:,2));
 % hold on
@@ -121,11 +173,13 @@ x = 10+delta*(start:iter); % X axis of the curves, representing number of UEs
 % legend('Normal Genetic','Fast Genetic')
 % xlabel("Number of UEs",'FontSize',Fontsize)
 % ylabel("Profit (in $)",'FontSize',Fontsize)
-% title("Comparison of Genetic Algorithms",'FontSize',Fontsize+1)
+% exportfig(gcf,'AlgorithmsComparison.eps','Color','cmyk','LineWidth',2)
 % grid on;
 
-% Comparison of all three algorithms (including sjoora)
+%% Comparison of all three algorithms (including sjoora)
 profit_genetic_avg = mean(profit_genetic(:,:,1));
+% temp = profit_genetic(:,:,2);
+% profit_fast_avg = mean(temp(~isinf(temp)));
 profit_fast_avg = mean(profit_genetic(:,:,2));
 profit_sjoora_avg = mean(profit_sjoora);
 figure;
@@ -136,11 +190,31 @@ plot(x,profit_sjoora_avg(start:iter),'-co')
 
 xlabel("Number of UEs",'FontSize',Fontsize)
 ylabel("Profit (in $)",'FontSize',Fontsize)
-title("Comparison of offloading strategies",'FontSize',Fontsize+1)
+% title("Comparison of offloading strategies",'FontSize',Fontsize+1)
 grid on;
-
+legend('Normal Genetic','Fast Genetic','Modified SJOORA','Location','Best')
 hold off
-legend('Normal Genetic','Fast Genetic','Modified SJOORA')
+exportfig(gcf,'AlgorithmsComparison.eps','Color','rgb','LineWidth',2)
+saveas(gcf,'AlgorithmsComparison.png')
+
+% TIME COMPARISON
+time_genetic_avg = mean(time_genetic(:,:,1));
+time_fast_avg = mean(time_genetic(:,:,2));
+time_sjoora_avg = mean(time_sjoora);
+figure;
+hold on
+plot(x,time_genetic_avg(start:iter),'-m*')
+plot(x,time_fast_avg(start:iter),'-kd')
+plot(x,time_sjoora_avg(start:iter),'-co')
+
+xlabel("Number of UEs",'FontSize',Fontsize)
+ylabel(" Execution Time (per unit scale)",'FontSize',Fontsize)
+% title("Comparison of offloading strategies",'FontSize',Fontsize+1)
+grid on;
+legend('Normal Genetic','Fast Genetic','Modified SJOORA','Location','Best')
+hold off
+exportfig(gcf,'AlgorithmsComparisonTime.eps','Color','rgb','LineWidth',2)
+saveas(gcf,'AlgorithmsComparisonTime.png')
 
 
 
@@ -151,6 +225,7 @@ legend('Normal Genetic','Fast Genetic','Modified SJOORA')
 %% SJOORA Algorithm - Refer Algorithm 2 of https://ieeexplore.ieee.org/document/8736324
 
  function [profit_sjoora,S1] = sjoora()
+
  disp('Solving using SJOORA')
 global e M N Wm
 S1 = []; %set of allowed MTs (mobile terminals)/UEs(User Equipment)
@@ -311,20 +386,27 @@ function [profit_genetic, a_best] = genetic_algo()
 % function to select the best UEs for offloading
 % Refer Algorithm1 in https://ieeexplore.ieee.org/document/6253581 
 
-global  genetic_fast e N M Wm  
+global  genetic_fast e N M Wm 
 
-if genetic_fast == 1
-    nind = 2000; % if fast genetic, set the number of individuals in the population high
-    disp('Solving using Fast Genetic Algorithm')
-else
-    nind =15; % if normal genetic, set the the number of individuals in the population low  
-    disp('Solving using Normal Genetic Algorithm')
-    
-end
 ggap = 0.8; % generation gap
 mutr = 0.05; % mutation ratio
-maxgen = 3; % maximum number of generations 
 a = zeros(M,N);
+
+if genetic_fast == 1
+    nind = 100; % if fast genetic, set the number of individuals in the population high
+    maxgen = 20; % maximum number of generations 
+    disp('Solving using Fast Genetic Algorithm')
+else
+    nind = 20; % if normal genetic, set the the number of individuals in the population low 
+    maxgen = 4; % maximum number of generations 
+    disp('Solving using Normal Genetic Algorithm')    
+end
+
+
+
+
+
+
 % create inital offloading strategy matrix 
 for m=1:M
     e_m(m) = max(e(m,:));
@@ -361,9 +443,11 @@ permitted_ues = randsample(1:M,nones,true,rating); % select permitted UEs based 
 chrom(:,:,j) = ismember(1:M,permitted_ues); % create a chromosome of length M  
 end
 
-gen =0;
+gen =1;
 while(gen < maxgen) % while the maximum number of generations not reached
   
+
+
     for i = 1:nind
       objv(i) = get_profit_genetic(chrom(:,:,i),a,e); % calculate the profit using the function. Create objctive vector of profits 
     end       
@@ -520,8 +604,8 @@ function [feasible,profit_out] = feasibility_check(a)
 % A function which can be used both for checking feasibility and calculating profit for an offloading strategy 
 global    e ohm gamma_C gamma_T Dm Fm B F   Ln fm_local Tm_max 
 
-idx2keep_columns = sum(abs(a),1)>0 ;
-idx2keep_rows    = sum(abs(a),2)>0 ;
+idx2keep_columns = sum(a,1)>0 ; 
+idx2keep_rows    = sum(a,2)>0 ;
 a_new = a(idx2keep_rows,idx2keep_columns);
 e_new = e(idx2keep_rows,idx2keep_columns);
 Dm_new = Dm(idx2keep_rows);

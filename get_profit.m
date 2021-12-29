@@ -5,8 +5,8 @@ function [profit_out,sol,constraint_check,a, T_tr, T_exe,exitflag ] = get_profit
 global e ohm gamma_C gamma_T Dm Fm B F   Ln fm_local Tm_max 
 
 % Resize the matrices and vectores
-idx2keep_columns = sum(abs(a),1)>0 ; 
-idx2keep_rows    = sum(abs(a),2)>0 ;
+idx2keep_columns = sum(a,1)>0 ; 
+idx2keep_rows    = sum(a,2)>0 ;
 a_new = a(idx2keep_rows,idx2keep_columns);
 e_new = e(idx2keep_rows,idx2keep_columns);
 Dm_new = Dm(idx2keep_rows);
@@ -93,9 +93,20 @@ T_tr = Dm_new./sum(R')';
 T_exe = Fm_new./(sol.cm*F);
 
  constraint_check = mean(Tm_max_new -(T_tr+T_exe) ); 
- constraint_check % for displaying constraint on command prompt
+ constraint_check % for displaying constraint on command window
  sum(sol.b)
  sum(sol.cm)
+ sol.ues_served = sum(a);
+
+ temp = zeros(1,length(idx2keep_columns));
+ temp(idx2keep_columns)= sum(sol.b);
+ sol.b_sum = temp;
+ sol.N_new = N;
+ sol.M_new = M;
+ sol.total_outdata = sum(Dm_new);
+ temp = zeros(1,length(idx2keep_columns));
+ temp(idx2keep_columns)= mean(e_new);
+ sol.mean_e = temp;
 end    
 
 
