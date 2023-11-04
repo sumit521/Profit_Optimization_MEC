@@ -2,7 +2,7 @@ function [profit_out,sol,constraint_check,a, T_tr, T_exe,exitflag ] = get_profit
 % A function to calculate proft by solving optimization problem using
 % MATLAB's inbuilt solver
 
-global e ohm gamma_C gamma_T Dm Fm B F   Ln fm_local Tm_max 
+global e ohm gamma_C gamma_T Dm Fm B F   Ln fm_local Tm_max trainedModel3
 
 % Resize the matrices and vectores
 idx2keep_columns = sum(a,1)>0 ; 
@@ -76,7 +76,7 @@ while(solved~=1)
         disp(profit_out)
     end
     loop_count = loop_count+1;
-    if(loop_count ==10)
+    if(loop_count == 10)
          %[profit_out,sol] = use_cvx(a_new,e_new, Dm_new, Fm_new, M, N, ohm_new, gamma_C_new, gamma_T_new, Tm_max_new);
         solved =1;
         disp("The offloading matrix is creating numerical problem. Try different one!");
@@ -107,12 +107,42 @@ T_exe = Fm_new./(sol.cm*F);
  temp = zeros(1,length(idx2keep_columns));
  temp(idx2keep_columns)= mean(e_new);
  sol.mean_e = temp;
+ 
+ 
+ %% for error comparison with prediction model
+% ues_served= sum(a_new)'; % for using same name as in the regression model
+% M_for_pred = M*ones(N,1);
+% N_new = nnz(sum(a_new,1)>0);
+% N_for_pred = N_new*ones(N,1);
+% eff_RRH_for_pred = sol.mean_e(1)*ones(N,1);
+% size(a_new)
+% % disp(M_for_pred);
+% % disp(N_for_pred);
+% % disp(ues_served);
+% %sprintf('%d,%d,%d \n',M_for_pred,N_for_pred,ues_served)
+% T = table(M_for_pred,N_for_pred,ues_served,eff_RRH_for_pred,'VariableNames',{'permitted_ues','N','num_RRH1','eff_RRH1'});
+% % trainedModel.predictFcn(T)
+% % class(trainedModel.predictFcn(T))
+% b_perRRH = trainedModel3.predictFcn(T).*logical(ues_served);
+% b_pred = b_perRRH'.*(a_new)./ues_served';
+% b_pred(isnan(b_pred)) = 0;
+% sol.b_pred = b_pred;
+% % load cmModel.mat
+% % T2 = table(M,N_new,sum(Dm),'VariableNames',{'permitted_ues','N','total_out_data'});
+% % total_comp_frac = cmModel.predictFcn(T2);
+% 
+% cm_pred = 0.8*Fm_new./sum(Fm_new);   % computational resource allocation assumption
+% sol.cm_pred = cm_pred;
+%  
+% sol.b_error_rmse =  sqrt(mean((sol.b(:) - sol.b_pred(:)).^2));
+% sol.cm_error_rmse = sqrt(mean((sol.cm(:) - sol.cm_pred(:)).^2));
+
 end    
 
 
 
 
-% the use_cvx function is optional , both fmincon and cvx give the same result
+% the use_cvx function is optional, both fmincon and cvx give the same result
 
 function [profit_out,sol] = use_cvx(a_new,e_new, Dm_new, Fm_new, M, N, ohm_new, gamma_C_new, gamma_T_new, Tm_max_new)
 global      B F  Ln fm_local  

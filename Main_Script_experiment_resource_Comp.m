@@ -15,9 +15,8 @@
 % Copyright 2021, Sumit Singh, All rights reserved
 %%
 clear ; close all;
-
-seed = 12345;
-rng(seed)
+random_seed = 1234;% default is 12345
+rng(random_seed)
 Fontsize = 12;
 global u genetic_fast e omega ohm gamma_C gamma_T Dm Fm B F N M Ln fm_local Tm_max Wm Sm kappa omega pf pt qb qc dataset trainedModel
 iter  = 10; % ending UE count 10+iter*delta
@@ -44,7 +43,7 @@ rho = cov_rad;
 xxRRH = [-cov_rad/2,0,cov_rad/2,-3*cov_rad/4,-cov_rad/4,cov_rad/4,3*cov_rad/4,-cov_rad/2,0,cov_rad/2]' + xx0;
 yyRRH = [1*cov_rad/2*ones(3,1);zeros(4,1);-1*cov_rad/2*ones(3,1)] + yy0;
 
-for u = 1:10 % number of iterations to average the result
+for u = 1:30 % number of iterations to average the result
 % rng(69); % initialize the seed for resource dependency trends
 
 for q = start:iter
@@ -83,8 +82,8 @@ end
 
 %% defining constants
 W = zeros(M,3); %task matrix, each row cooresponds to one user's (Fm,Dm and Tm,max)
-B = 1e7;    % channel bandwidth 10MHz
 Ln = 5e7; % fronthaul capacity for each RRH is 50Mbps
+B = 1e7;    % channel bandwidth 10MHz
 F = 100e9; %MEC server maximum computational capacity 100 GHz
 fm_local = 0.7e9;   % local computational capacity 0.7GHz
 Dm = unifrnd(50,200,M,1)*1024*8; % output data size
@@ -101,43 +100,50 @@ Wm = [Fm,Dm,Tm_max]; % taks matrix
 gamma_T = omega*B*qb*ones(M,1); % communication cost vector
 gamma_C = kappa*F*qc*ones(M,1); % computationa cost vector
 ohm = (pf*Fm +pt.*Dm+Sm); % revenue vector
-dataset = readtable('filtered_dataset.xlsx');
+%dataset = readtable('filtered_dataset.xlsx');
 % creating spectrum efficiency matrix  
 % e = 5*rand(M,N).*rand(M,N);% spectrum efficiency between each UE and RRH is in range 0 to 5.
 
+ln_vector = [2 6 10].*1e7;
+B_vector = [2 5 10].*1e7;
+F_vector = [50 150 250].*1e9;
 
 
+for z = 1:3
+% Ln = ln_vector(z); %MEC server maximum computational capacity 100 GHz
+F = F_vector(z);
 %% Calculating the profits 
 
-% % genetic_fast = 1 ;
-% % tic
-% % [profit_genetic(u,q),~] = genetic_algo();
-% % time_genetic(u,q) = toc;
-% % tic
-% % profit_greedy(u,q) = greedy_algo();
-% % time_greedy(u,q) = toc;
-
-
-for s = 1:2 
-    genetic_fast = s-1; %if genetic_fast == 1, then fast genetic algo is used otherwise normal genetic
-    tic
-    [profit_genetic(u,q,s),~] = genetic_algo();
-    time_genetic(u,q,s)= toc;
+genetic_fast = 0 ;
+tic
+[profit_genetic(u,q,z),~] = genetic_algo();
+time_genetic(u,q,z) = toc;
 end
-tic
-[profit_sjoora(u,q),S1] = sjoora(); % calculate the profit using sjoora algorithm
-time_sjoora(u,q) = toc;
+% tic
+% profit_greedy(u,q) = greedy_algo();
+% time_greedy(u,q) = toc;
 
 
-tic
-profit_greedy(u,q) = greedy_algo();
-time_greedy(u,q) = toc;
- tic
-[profit_sbpso(u,q), ~] = SBPSO(); 
-time_sbpso(u,q)= toc;
-tic
-[profit_dsbpso(u,q), ~] = DSBPSO(); 
-time_dsbpso(u,q)= toc;
+% for s = 1:2 
+%     genetic_fast = s-1; %if genetic_fast == 1, then fast genetic algo is used otherwise normal genetic
+%     tic
+%     [profit_genetic(u,q,s),~] = genetic_algo();
+%     time_genetic(u,q,s)= toc;
+% end
+% tic
+% [profit_sjoora(u,q),S1] = sjoora(); % calculate the profit using sjoora algorithm
+% time_sjoora(u,q) = toc;
+% 
+% 
+% tic
+% profit_greedy(u,q) = greedy_algo();
+% time_greedy(u,q) = toc;
+%  tic
+% [profit_sbpso(u,q), ~] = SBPSO(); 
+% time_sbpso(u,q)= toc;
+% tic
+% [profit_dsbpso(u,q), ~] = DSBPSO(); 
+% time_dsbpso(u,q)= toc;
 %%
 end
 end
@@ -147,6 +153,45 @@ end
 %------------------------------------------
 
 x = 10+delta*(start:iter); % X axis of the curves, representing number of UEs 
+
+%% for resource dependency trend
+markers = {'o','+','*','s','d','v','>','h'};
+% List a bunch of colors; like the markers, they 
+% will be selected circularly. 
+colors = {'b','c','r','g','k','m'};
+
+% Same with line styles
+linestyle = {'-','--','-.',':'};
+% this function will do the circular selection
+% Example:  getprop(colors, 7) = 'b'
+getFirst = @(v)v{1}; 
+getprop = @(options, idx)getFirst(circshift(options,-idx+1));
+
+figure;
+hold on
+box on
+for i = 1:z
+    y = mean(profit_genetic(:,:,i));    
+    plot(x,y(start:iter),'Marker',getprop(markers,i),...
+        'color',getprop(colors,i));
+    text{i} = sprintf('F = %d GHz',F_vector(i)/1e9);     
+end
+legend(text{1:z},'Location','Best')
+xlabel("Number of UEs",'FontSize',Fontsize)
+ylabel("Profit (in $)",'FontSize',Fontsize)
+saveas(gcf,'Computational.png')
+saveas(gcf,'Computational','epsc')
+save Computational.mat
+% saveas(gcf,'Fronthaul.png')
+% saveas(gcf,'Fronthaul','epsc')
+% save Fronthaul.mat
+% saveas(gcf,'Bandwidth.png')
+% saveas(gcf,'Bandwidth','epsc')
+% save Bandwidth.mat
+hold off
+
+system('shutdown -s')
+% system('shutdown -a')
 
 %% Comparison of all three algorithms (including sjoora)
 profit_genetic_avg = mean(profit_genetic(:,:,1));
@@ -226,8 +271,11 @@ genetic_fast =1; % for using penalty function
 
 
 nPop = 15;      % total individuals in population
-Varsize = M;    % number of bits in each individual of the population 
 T = 30;         % number of iterations
+if M <40
+    T = 15;
+    nPop = 12;
+end
 ustkS = 8*T/100;
 alpha = 2;
 is = 4/M;
@@ -328,18 +376,17 @@ for t=1:T
             if particle(i).lastposition(j)~= particle(i).position(j)
                 particle(i).stk(j) = 1;
             else
-                particle(i).stk(j) = max(particle(i).stk(j)-1/ustkS,0);                
+                particle(i).stk(j) = max(particle(i).stk(j)-1/ustkS,0);
             end
             particle(i).prob(j) = is*(1-particle(i).stk(j)) + ip*abs(particle(i).pbest(j)-particle(i).position(j)) + ig*abs(particle(i).gbest(j)-particle(i).position(j));
             
             if rand < particle(i).prob(j)
                 particle(i).lastposition(j) = particle(i).position(j);
-                particle(i).position(j) = 1-particle(i).position(j);                
-            end            
-                
+                particle(i).position(j) = 1-particle(i).position(j);
+            end      
             
         end
-    end   
+    end
 end
 
 %output = particle;
@@ -775,8 +822,8 @@ mutr = 0.02; % mutation ratio
 a = zeros(M,N);
 
 if genetic_fast == 1
-    nind = 30;      % value should be greater than 10 and simultaneously also being a multiple of 5. 
-    maxgen = 7;     % maximum number of generations 
+    nind = 30; % value should be greater than 10 and simultaneously also being a multiple of 5. 
+    maxgen = 7; % maximum number of generations 
     disp('Solving using Fast Genetic Algorithm')
 else
     nind = 15; % if normal genetic, set the the number of individuals in the population low 
@@ -806,6 +853,7 @@ rating = (x1*e_m + x2*sum(Wm_metric'))/(x1+x2); % deciding rating based on the t
 
 %% for finding the number of feasible UEs as starting point
 % nones = min(max(dataset.permitted_ues),M);
+
 step_size = ceil(0.1*M); % select the stepsize
 nones = 20;
 check(1)=0;% first index of check vector set to 0
@@ -899,9 +947,9 @@ end
     for i = 1:nind
         objv(i) = get_profit_genetic(chrom(:,:,i),a,e);% calculate the profits for the final population after nind generations
     end
-    
+  
     [objv_sorted,idx] = sort(objv,'descend'); % sort the profits in descending order
-    
+ 
 if genetic_fast ~= 1    
     profit_genetic = objv_sorted(1); % if it is normal genetic algo, set the output profit as top of sorted objv 
     a_best = idx(1); % best chromosome corresponding to chromosome with highest profit
@@ -920,23 +968,27 @@ end
 profit_genetic = max(profit);
 while profit_genetic == -Inf
     for i = bestof:2*bestof
+        disp(i)
         a_best = chrom(:,:,idx(i)); % top chromosome number i;
         genetic_offloading_strategy = a_best'.*a;
         [~,profit(i)] = feasibility_check(genetic_offloading_strategy);
-    end    
+        disp(profit(i))
+        if i >= nind
+            profit_genetic = 0;
+            break
+        end
+    end 
+    
     profit_genetic = max(profit);
     bestof = 2*bestof;
-    if bestof+incr_size > nind
-        profit_genetic = 0;
-        break
-    end
+   
 end
 disp(profit(:))
 
 
 end
 fprintf('Final profit from genetic algorithm = %f \n',profit_genetic)
-
+toc
 
 end
 
@@ -1070,7 +1122,9 @@ expressions R(M,N) T_tr(M,1) T_exe(M,1)
 R = a_new.*b.*e_new*B;
 T_tr = Dm_new.*inv_pos(sum(R')');
 T_exe = Fm_new.*inv_pos((cm*F));
+
 maximise(sum(ohm_new - cm.*gamma_C_new - sum(b')'.*gamma_T_new))
+
 subject to
 sum(R) <= Ln*ones(1,N);
 0<=cm<=1;

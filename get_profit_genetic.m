@@ -1,9 +1,7 @@
 function [profit_out]=get_profit_genetic(permitted_ues,a_se,e_global)
 % A function to calculate profit for the genetic algorithm
 global genetic_fast N  Wm B  F Ln fm_local Sm kappa omega pf pt qb qc best  best_unpenalized  trainedModel
-   
 clear gamma_T
-
 if genetic_fast ~= 1 % if normal genetic algorithm is used
 idx = permitted_ues;
 a = idx'.*a_se; % create offloading strtegy based on permitted UEs
@@ -15,7 +13,7 @@ fprintf('profit_out = %f\n',profit_out);
 else
 %% Code for fast genetic algorithm
 
-load trainedModel.mat 
+
 
 idx = permitted_ues;
 a = a_se(idx,:); 
@@ -32,7 +30,7 @@ Tm_max =Wm_genetic(:,3);
 % b = (0.2 +.3*rand)*(a)./sum(a); % radio resource allocation assumption
 % b(isnan(b)) = 0;
 
-ues_served= sum(a)'; % for using same name as in the regression model
+ues_served = sum(a)'; % for using same name as in the regression model
 M_for_pred = M*ones(10,1);
 N_for_pred = N_new*ones(10,1);
 T = table(M_for_pred,N_for_pred,ues_served,'VariableNames',{'permitted_ues','N','num_RRH1'});
