@@ -1,18 +1,17 @@
 % -----------------------------------------------------------------------
-% PROFIT OPTIMIZATION FOR MOBILE EDGE COMPUTING USING GENETIC ALGORITHM 
+% JOINT OPTIMIZATION OF COMPUTATION OFFLOADING 
+% AND RESOURCE ALLOCATION IN C-RAN WITH MOBILE EDGE
+% COMPUTING USING EVOLUTIONARY ALGORITHM 
 %------------------------------------------------------------------------
 % Author - Sumit Singh
 % NOTE- you MUST INSTALL CVX before running this code!
 % Using this code, we try to evaluate the performance of three algorithms
 % in terms of their profitability in deciding computation offloading
-% strategy in mobile edge computing scenario. These three algorithms are
-% 1. Normal Genetic 2. Fast Genetic 3. SJOORA scheme.
-% For system model, simulation paramters and SJOORA algorithm, refer to https://ieeexplore.ieee.org/document/8736324
+% strategy in mobile edge computing scenario. 
+% For system model, simulation paramters, refer to https://ieeexplore.ieee.org/abstract/document/10273406
 % The program execution can take upto 45 min for u=3 (3 iterations) on i7-1170 processor,
 % RAM 16GB. More time for higher u. Don't set u=1:1. As the mean() function
 % will avarage the single row. Keep u>1, for averaging along columns.
-% Have patience!
-% Copyright 2021, Sumit Singh, All rights reserved
 %%
 clear ; close all;
 
